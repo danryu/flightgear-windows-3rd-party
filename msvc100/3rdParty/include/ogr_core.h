@@ -1,5 +1,5 @@
 /******************************************************************************
- * $Id: ogr_core.h,v 1.25 2005/02/02 19:59:47 fwarmerdam Exp $
+ * $Id: ogr_core.h 27058 2014-03-19 22:19:21Z kyle $
  *
  * Project:  OpenGIS Simple Features Reference Implementation
  * Purpose:  Define some core portability services for cross-platform OGR code.
@@ -7,6 +7,7 @@
  *
  ******************************************************************************
  * Copyright (c) 1999, Frank Warmerdam
+ * Copyright (c) 2007-2014, Even Rouault <even dot rouault at mines-paris dot org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -25,110 +26,54 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- ******************************************************************************
- *
- * $Log: ogr_core.h,v $
- * Revision 1.25  2005/02/02 19:59:47  fwarmerdam
- * added SetNextByIndex support
- *
- * Revision 1.24  2003/10/09 15:27:41  warmerda
- * added OGRLayer::DeleteFeature() support
- *
- * Revision 1.23  2003/09/11 19:59:41  warmerda
- * avoid casting issue with UNFIX macro
- *
- * Revision 1.22  2003/08/27 15:40:37  warmerda
- * added support for generating DB2 V7.2 compatible WKB
- *
- * Revision 1.21  2003/08/11 03:28:04  warmerda
- * Export OGREnvelope C++ class with CPL_DLL as per bug 378.
- *
- * Revision 1.20  2003/06/09 13:48:54  warmerda
- * added DB2 V7.2 byte order hack
- *
- * Revision 1.19  2003/05/08 13:27:22  warmerda
- * dont use C++ comments in this c includable file
- *
- * Revision 1.18  2003/04/29 19:03:58  warmerda
- * removed extra comma
- *
- * Revision 1.17  2003/03/03 05:05:54  warmerda
- * added support for DeleteDataSource and DeleteLayer
- *
- * Revision 1.16  2003/02/19 02:57:49  warmerda
- * added wkbLinearRing support
- *
- * Revision 1.15  2003/01/14 20:08:49  warmerda
- * fixed another bug in OGREnvelope.Merge
- *
- * Revision 1.14  2003/01/07 17:51:55  warmerda
- * fixed OGREnvelope.Merge()
- *
- * Revision 1.13  2003/01/06 17:56:03  warmerda
- * Added Merge and IsInit() method on OGREnvelope
- *
- * Revision 1.12  2002/11/08 18:25:45  warmerda
- * remove extranious comma in enum, confuses HPUX compiler
- *
- * Revision 1.11  2002/11/08 15:42:41  warmerda
- * ensure type correctness of wkbFlatten
- *
- * Revision 1.10  2002/10/24 20:53:02  warmerda
- * expand tabs
- *
- * Revision 1.9  2002/09/26 18:13:17  warmerda
- * moved some defs to ogr_core.h for sharing with ogr_api.h
- *
- * Revision 1.8  2000/07/11 20:15:12  warmerda
- * apply CPL_DLL to OGR functions
- *
- * Revision 1.7  2000/07/09 20:47:35  warmerda
- * added CPL_START/END
- *
- * Revision 1.6  1999/11/18 19:02:19  warmerda
- * expanded tabs
- *
- * Revision 1.5  1999/07/07 04:23:07  danmo
- * Fixed typo in  #define _OGR_..._H_INCLUDED  line
- *
- * Revision 1.4  1999/07/05 18:56:52  warmerda
- * now includes cpl_port.h
- *
- * Revision 1.3  1999/07/05 17:19:03  warmerda
- * added OGRERR_UNSUPPORTED_SRS
- *
- * Revision 1.2  1999/05/31 15:00:37  warmerda
- * added generic OGRERR_FAILURE error code.
- *
- * Revision 1.1  1999/05/20 14:35:00  warmerda
- * New
- *
- */
+ ****************************************************************************/
 
-#ifndef _OGR_CORE_H_INCLUDED
-#define _OGR_CORE_H_INCLUDED
+#ifndef OGR_CORE_H_INCLUDED
+#define OGR_CORE_H_INCLUDED
 
 #include "cpl_port.h"
+#include "gdal_version.h"
+
+/**
+ * \file
+ *
+ * Core portability services for cross-platform OGR code.
+ */
 
 /**
  * Simple container for a bounding region.
  */
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(CPL_SUPRESS_CPLUSPLUS)
 class CPL_DLL OGREnvelope
 {
   public:
-        OGREnvelope()
+        OGREnvelope() : MinX(0.0), MaxX(0.0), MinY(0.0), MaxY(0.0)
         {
-                MinX = MaxX = MinY = MaxY = 0;
         }
+
+        OGREnvelope(const OGREnvelope& oOther) :
+            MinX(oOther.MinX),MaxX(oOther.MaxX), MinY(oOther.MinY), MaxY(oOther.MaxY)
+        {
+        }
+
     double      MinX;
     double      MaxX;
     double      MinY;
     double      MaxY;
 
-    int  IsInit() { return MinX != 0 || MinY != 0 || MaxX != 0 || MaxY != 0; }
-    void Merge( OGREnvelope & sOther ) {
+/* See http://trac.osgeo.org/gdal/ticket/5299 for details on this pragma */
+#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6 && !defined(_MSC_VER)) 
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#pragma GCC diagnostic push
+#endif
+    int  IsInit() const { return MinX != 0 || MinY != 0 || MaxX != 0 || MaxY != 0; }
+
+#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6 && !defined(_MSC_VER))
+#pragma GCC diagnostic pop
+#endif
+
+    void Merge( OGREnvelope const& sOther ) {
         if( IsInit() )
         {
             MinX = MIN(MinX,sOther.MinX);
@@ -144,6 +89,59 @@ class CPL_DLL OGREnvelope
             MaxY = sOther.MaxY;
         }
     }
+    void Merge( double dfX, double dfY ) {
+        if( IsInit() )
+        {
+            MinX = MIN(MinX,dfX);
+            MaxX = MAX(MaxX,dfX);
+            MinY = MIN(MinY,dfY);
+            MaxY = MAX(MaxY,dfY);
+        }
+        else
+        {
+            MinX = MaxX = dfX;
+            MinY = MaxY = dfY;
+        }
+    }
+    
+    void Intersect( OGREnvelope const& sOther ) {
+        if(Intersects(sOther))
+        {
+            if( IsInit() )
+            {
+                MinX = MAX(MinX,sOther.MinX);
+                MaxX = MIN(MaxX,sOther.MaxX);
+                MinY = MAX(MinY,sOther.MinY);
+                MaxY = MIN(MaxY,sOther.MaxY);
+            }
+            else
+            {
+                MinX = sOther.MinX;
+                MaxX = sOther.MaxX;
+                MinY = sOther.MinY;
+                MaxY = sOther.MaxY;
+            }
+        }
+        else
+        {
+            MinX = 0;
+            MaxX = 0;
+            MinY = 0;
+            MaxY = 0;
+        }
+    }
+ 
+    int Intersects(OGREnvelope const& other) const
+    {
+        return MinX <= other.MaxX && MaxX >= other.MinX && 
+               MinY <= other.MaxY && MaxY >= other.MinY;
+    }
+
+    int Contains(OGREnvelope const& other) const
+    {
+        return MinX <= other.MinX && MinY <= other.MinY &&
+               MaxX >= other.MaxX && MaxY >= other.MaxY;
+    }
 };
 #else
 typedef struct
@@ -154,6 +152,127 @@ typedef struct
     double      MaxY;
 } OGREnvelope;
 #endif
+
+
+/**
+ * Simple container for a bounding region in 3D.
+ */
+
+#if defined(__cplusplus) && !defined(CPL_SUPRESS_CPLUSPLUS)
+class CPL_DLL OGREnvelope3D : public OGREnvelope
+{
+  public:
+        OGREnvelope3D() : OGREnvelope(), MinZ(0.0), MaxZ(0.0)
+        {
+        }
+
+        OGREnvelope3D(const OGREnvelope3D& oOther) :
+                            OGREnvelope(oOther),
+                            MinZ(oOther.MinZ), MaxZ(oOther.MaxZ)
+        {
+        }
+
+    double      MinZ;
+    double      MaxZ;
+
+    int  IsInit() const { return MinX != 0 || MinY != 0 || MaxX != 0 || MaxY != 0 || MinZ != 0 || MaxZ != 0; }
+    void Merge( OGREnvelope3D const& sOther ) {
+        if( IsInit() )
+        {
+            MinX = MIN(MinX,sOther.MinX);
+            MaxX = MAX(MaxX,sOther.MaxX);
+            MinY = MIN(MinY,sOther.MinY);
+            MaxY = MAX(MaxY,sOther.MaxY);
+            MinZ = MIN(MinZ,sOther.MinZ);
+            MaxZ = MAX(MaxZ,sOther.MaxZ);
+        }
+        else
+        {
+            MinX = sOther.MinX;
+            MaxX = sOther.MaxX;
+            MinY = sOther.MinY;
+            MaxY = sOther.MaxY;
+            MinZ = sOther.MinZ;
+            MaxZ = sOther.MaxZ;
+        }
+    }
+    void Merge( double dfX, double dfY, double dfZ ) {
+        if( IsInit() )
+        {
+            MinX = MIN(MinX,dfX);
+            MaxX = MAX(MaxX,dfX);
+            MinY = MIN(MinY,dfY);
+            MaxY = MAX(MaxY,dfY);
+            MinZ = MIN(MinZ,dfZ);
+            MaxZ = MAX(MaxZ,dfZ);
+        }
+        else
+        {
+            MinX = MaxX = dfX;
+            MinY = MaxY = dfY;
+            MinZ = MaxZ = dfZ;
+        }
+    }
+
+    void Intersect( OGREnvelope3D const& sOther ) {
+        if(Intersects(sOther))
+        {
+            if( IsInit() )
+            {
+                MinX = MAX(MinX,sOther.MinX);
+                MaxX = MIN(MaxX,sOther.MaxX);
+                MinY = MAX(MinY,sOther.MinY);
+                MaxY = MIN(MaxY,sOther.MaxY);
+                MinZ = MAX(MinZ,sOther.MinZ);
+                MaxZ = MIN(MaxZ,sOther.MaxZ);
+            }
+            else
+            {
+                MinX = sOther.MinX;
+                MaxX = sOther.MaxX;
+                MinY = sOther.MinY;
+                MaxY = sOther.MaxY;
+                MinZ = sOther.MinZ;
+                MaxZ = sOther.MaxZ;
+            }
+        }
+        else
+        {
+            MinX = 0;
+            MaxX = 0;
+            MinY = 0;
+            MaxY = 0;
+            MinZ = 0;
+            MaxZ = 0;
+        }
+    }
+
+    int Intersects(OGREnvelope3D const& other) const
+    {
+        return MinX <= other.MaxX && MaxX >= other.MinX &&
+               MinY <= other.MaxY && MaxY >= other.MinY &&
+               MinZ <= other.MaxZ && MaxZ >= other.MinZ;
+    }
+
+    int Contains(OGREnvelope3D const& other) const
+    {
+        return MinX <= other.MinX && MinY <= other.MinY &&
+               MaxX >= other.MaxX && MaxY >= other.MaxY &&
+               MinZ <= other.MinZ && MaxZ >= other.MaxZ;
+    }
+};
+#else
+typedef struct
+{
+    double      MinX;
+    double      MaxX;
+    double      MinY;
+    double      MaxY;
+    double      MinZ;
+    double      MaxZ;
+} OGREnvelope3D;
+#endif
+
 
 CPL_C_START
 
@@ -173,38 +292,56 @@ typedef int OGRErr;
 #define OGRERR_CORRUPT_DATA        5
 #define OGRERR_FAILURE             6
 #define OGRERR_UNSUPPORTED_SRS     7
+#define OGRERR_INVALID_HANDLE      8
 
 typedef int     OGRBoolean;
 
 /* -------------------------------------------------------------------- */
 /*      ogr_geometry.h related definitions.                             */
 /* -------------------------------------------------------------------- */
+
 /**
  * List of well known binary geometry types.  These are used within the BLOBs
  * but are also returned from OGRGeometry::getGeometryType() to identify the
  * type of a geometry object.
  */
-
 typedef enum 
 {
-    wkbUnknown = 0,             /* non-standard */
-    wkbPoint = 1,               /* rest are standard WKB type codes */
-    wkbLineString = 2,
-    wkbPolygon = 3,
-    wkbMultiPoint = 4,
-    wkbMultiLineString = 5,
-    wkbMultiPolygon = 6,
-    wkbGeometryCollection = 7,
-    wkbNone = 100,              /* non-standard, for pure attribute records */
-    wkbLinearRing = 101,        /* non-standard, just for createGeometry() */
-    wkbPoint25D = 0x80000001,   /* 2.5D extensions as per 99-402 */
-    wkbLineString25D = 0x80000002,
-    wkbPolygon25D = 0x80000003,
-    wkbMultiPoint25D = 0x80000004,
-    wkbMultiLineString25D = 0x80000005,
-    wkbMultiPolygon25D = 0x80000006,
-    wkbGeometryCollection25D = 0x80000007
+    wkbUnknown = 0,         /**< unknown type, non-standard */
+    wkbPoint = 1,           /**< 0-dimensional geometric object, standard WKB */
+    wkbLineString = 2,      /**< 1-dimensional geometric object with linear
+                             *   interpolation between Points, standard WKB */
+    wkbPolygon = 3,         /**< planar 2-dimensional geometric object defined
+                             *   by 1 exterior boundary and 0 or more interior
+                             *   boundaries, standard WKB */
+    wkbMultiPoint = 4,      /**< GeometryCollection of Points, standard WKB */
+    wkbMultiLineString = 5, /**< GeometryCollection of LineStrings, standard WKB */
+    wkbMultiPolygon = 6,    /**< GeometryCollection of Polygons, standard WKB */
+    wkbGeometryCollection = 7, /**< geometric object that is a collection of 1
+                                    or more geometric objects, standard WKB */
+    wkbNone = 100,          /**< non-standard, for pure attribute records */
+    wkbLinearRing = 101,    /**< non-standard, just for createGeometry() */
+    wkbPoint25D = 0x80000001, /**< 2.5D extension as per 99-402 */
+    wkbLineString25D = 0x80000002, /**< 2.5D extension as per 99-402 */
+    wkbPolygon25D = 0x80000003, /**< 2.5D extension as per 99-402 */
+    wkbMultiPoint25D = 0x80000004, /**< 2.5D extension as per 99-402 */
+    wkbMultiLineString25D = 0x80000005, /**< 2.5D extension as per 99-402 */
+    wkbMultiPolygon25D = 0x80000006, /**< 2.5D extension as per 99-402 */
+    wkbGeometryCollection25D = 0x80000007 /**< 2.5D extension as per 99-402 */
 } OGRwkbGeometryType;
+
+/**
+ * Output variants of WKB we support. 
+ * 99-402 was a short-lived extension to SFSQL 1.1 that used a high-bit flag
+ * to indicate the presence of Z coordiantes in a WKB geometry.
+ * SQL/MM Part 3 and SFSQL 1.2 use offsets of 1000 (Z), 2000 (M) and 3000 (ZM)
+ * to indicate the present of higher dimensional coordinates in a WKB geometry.
+ */
+typedef enum 
+{
+    wkbVariantOgc, /**< Old-style 99-402 extended dimension (Z) WKB types */
+    wkbVariantIso  /**< SFSQL 1.2 and ISO SQL/MM Part 3 extended dimension (Z&M) WKB types */
+} OGRwkbVariant;
 
 #define wkb25DBit 0x80000000
 #define wkbFlatten(x)  ((OGRwkbGeometryType) ((x) & (~wkb25DBit)))
@@ -212,6 +349,8 @@ typedef enum
 #define ogrZMarker 0x21125711
 
 const char CPL_DLL * OGRGeometryTypeToName( OGRwkbGeometryType eType );
+OGRwkbGeometryType CPL_DLL OGRMergeGeometryTypes( OGRwkbGeometryType eMain,
+                                                  OGRwkbGeometryType eExtra );
 
 typedef enum 
 {
@@ -231,6 +370,11 @@ typedef enum
 #  define DB2_V72_UNFIX_BYTE_ORDER(x) (x)
 #endif
 
+#define ALTER_NAME_FLAG            0x1
+#define ALTER_TYPE_FLAG            0x2
+#define ALTER_WIDTH_PRECISION_FLAG 0x4
+#define ALTER_ALL_FLAG             (ALTER_NAME_FLAG | ALTER_TYPE_FLAG | ALTER_WIDTH_PRECISION_FLAG)
+
 /************************************************************************/
 /*                  ogr_feature.h related definitions.                  */
 /************************************************************************/
@@ -249,9 +393,13 @@ typedef enum
   /** List of doubles */                        OFTRealList = 3,
   /** String of ASCII chars */                  OFTString = 4,
   /** Array of strings */                       OFTStringList = 5,
-  /** Double byte string (unsupported) */       OFTWideString = 6,
-  /** List of wide strings (unsupported) */     OFTWideStringList = 7,
-  /** Raw Binary data (unsupported) */          OFTBinary = 8
+  /** deprecated */                             OFTWideString = 6,
+  /** deprecated */                             OFTWideStringList = 7,
+  /** Raw Binary data */                        OFTBinary = 8,
+  /** Date */                                   OFTDate = 9,
+  /** Time */                                   OFTTime = 10,
+  /** Date and Time */                          OFTDateTime = 11,
+                                                OFTMaxType = 11
 } OGRFieldType;
 
 /**
@@ -280,7 +428,6 @@ typedef union {
     int         Integer;
     double      Real;
     char       *String;
-    /* wchar    *WideString; */
     
     struct {
         int     nCount;
@@ -297,18 +444,30 @@ typedef union {
         char    **paList;
     } StringList;
 
-    /*
-    union {
-        int   nCount;
-        wchar *paList;
-    } WideStringList;
-    */
-
+    struct {
+        int     nCount;
+        GByte   *paData;
+    } Binary;
+    
     struct {
         int     nMarker1;
         int     nMarker2;
     } Set;
+
+    struct {
+        GInt16  Year;
+        GByte   Month;
+        GByte   Day;
+        GByte   Hour;
+        GByte   Minute;
+        GByte   Second;
+        GByte   TZFlag; /* 0=unknown, 1=localtime(ambiguous), 
+                           100=GMT, 104=GMT+1, 80=GMT-5, etc */
+    } Date;
 } OGRField;
+
+int CPL_DLL OGRParseDate( const char *pszInput, OGRField *psOutput, 
+                          int nOptions );
 
 /* -------------------------------------------------------------------- */
 /*      Constants from ogrsf_frmts.h for capabilities.                  */
@@ -320,17 +479,174 @@ typedef union {
 #define OLCFastFeatureCount    "FastFeatureCount"
 #define OLCFastGetExtent       "FastGetExtent"
 #define OLCCreateField         "CreateField"
+#define OLCDeleteField         "DeleteField"
+#define OLCReorderFields       "ReorderFields"
+#define OLCAlterFieldDefn      "AlterFieldDefn"
 #define OLCTransactions        "Transactions"
 #define OLCDeleteFeature       "DeleteFeature"
 #define OLCFastSetNextByIndex  "FastSetNextByIndex"
+#define OLCStringsAsUTF8       "StringsAsUTF8"
+#define OLCIgnoreFields        "IgnoreFields"
+#define OLCCreateGeomField     "CreateGeomField"
 
 #define ODsCCreateLayer        "CreateLayer"
 #define ODsCDeleteLayer        "DeleteLayer"
+#define ODsCCreateGeomFieldAfterCreateLayer   "CreateGeomFieldAfterCreateLayer"
 
 #define ODrCCreateDataSource   "CreateDataSource"
 #define ODrCDeleteDataSource   "DeleteDataSource"
 
+
+/************************************************************************/
+/*                  ogr_featurestyle.h related definitions.             */
+/************************************************************************/
+
+/**
+ * OGRStyleTool derived class types (returned by GetType()).
+ */
+
+typedef enum ogr_style_tool_class_id
+{
+    OGRSTCNone   = 0,
+    OGRSTCPen    = 1,
+    OGRSTCBrush  = 2,
+    OGRSTCSymbol = 3,
+    OGRSTCLabel  = 4,
+    OGRSTCVector = 5
+} OGRSTClassId;
+
+/**
+ * List of units supported by OGRStyleTools.
+ */
+typedef enum ogr_style_tool_units_id
+{
+    OGRSTUGround = 0,
+    OGRSTUPixel  = 1,
+    OGRSTUPoints = 2,
+    OGRSTUMM     = 3,
+    OGRSTUCM     = 4,
+    OGRSTUInches = 5
+} OGRSTUnitId;
+
+/**
+ * List of parameters for use with OGRStylePen.
+ */
+typedef enum ogr_style_tool_param_pen_id
+{  
+    OGRSTPenColor       = 0,                   
+    OGRSTPenWidth       = 1,                   
+    OGRSTPenPattern     = 2,
+    OGRSTPenId          = 3,
+    OGRSTPenPerOffset   = 4,
+    OGRSTPenCap         = 5,
+    OGRSTPenJoin        = 6,
+    OGRSTPenPriority    = 7,
+    OGRSTPenLast        = 8
+              
+} OGRSTPenParam;
+
+/**
+ * List of parameters for use with OGRStyleBrush.
+ */
+typedef enum ogr_style_tool_param_brush_id
+{  
+    OGRSTBrushFColor    = 0,                   
+    OGRSTBrushBColor    = 1,                   
+    OGRSTBrushId        = 2,
+    OGRSTBrushAngle     = 3,                   
+    OGRSTBrushSize      = 4,
+    OGRSTBrushDx        = 5,
+    OGRSTBrushDy        = 6,
+    OGRSTBrushPriority  = 7,
+    OGRSTBrushLast      = 8
+              
+} OGRSTBrushParam;
+
+
+/**
+ * List of parameters for use with OGRStyleSymbol.
+ */
+typedef enum ogr_style_tool_param_symbol_id
+{  
+    OGRSTSymbolId       = 0,
+    OGRSTSymbolAngle    = 1,
+    OGRSTSymbolColor    = 2,
+    OGRSTSymbolSize     = 3,
+    OGRSTSymbolDx       = 4,
+    OGRSTSymbolDy       = 5,
+    OGRSTSymbolStep     = 6,
+    OGRSTSymbolPerp     = 7,
+    OGRSTSymbolOffset   = 8,
+    OGRSTSymbolPriority = 9,
+    OGRSTSymbolFontName = 10,
+    OGRSTSymbolOColor   = 11,
+    OGRSTSymbolLast     = 12
+              
+} OGRSTSymbolParam;
+
+/**
+ * List of parameters for use with OGRStyleLabel.
+ */
+typedef enum ogr_style_tool_param_label_id
+{  
+    OGRSTLabelFontName  = 0,
+    OGRSTLabelSize      = 1,
+    OGRSTLabelTextString = 2,
+    OGRSTLabelAngle     = 3,
+    OGRSTLabelFColor    = 4,
+    OGRSTLabelBColor    = 5,
+    OGRSTLabelPlacement = 6,
+    OGRSTLabelAnchor    = 7,
+    OGRSTLabelDx        = 8,
+    OGRSTLabelDy        = 9,
+    OGRSTLabelPerp      = 10,
+    OGRSTLabelBold      = 11,
+    OGRSTLabelItalic    = 12,
+    OGRSTLabelUnderline = 13,
+    OGRSTLabelPriority  = 14,
+    OGRSTLabelStrikeout = 15,
+    OGRSTLabelStretch   = 16,
+    OGRSTLabelAdjHor    = 17,
+    OGRSTLabelAdjVert   = 18,
+    OGRSTLabelHColor    = 19,
+    OGRSTLabelOColor    = 20,
+    OGRSTLabelLast      = 21
+              
+} OGRSTLabelParam;
+
+/* ------------------------------------------------------------------- */
+/*                        Version checking                             */
+/* -------------------------------------------------------------------- */
+
+/* Note to developers : please keep this section in sync with gdal.h */
+
+#ifndef GDAL_VERSION_INFO_DEFINED
+#define GDAL_VERSION_INFO_DEFINED
+const char CPL_DLL * CPL_STDCALL GDALVersionInfo( const char * );
+#endif
+
+#ifndef GDAL_CHECK_VERSION
+
+/** Return TRUE if GDAL library version at runtime matches nVersionMajor.nVersionMinor.
+
+    The purpose of this method is to ensure that calling code will run with the GDAL
+    version it is compiled for. It is primarly intented for external plugins.
+
+    @param nVersionMajor Major version to be tested against
+    @param nVersionMinor Minor version to be tested against
+    @param pszCallingComponentName If not NULL, in case of version mismatch, the method
+                                   will issue a failure mentionning the name of
+                                   the calling component.
+  */
+int CPL_DLL CPL_STDCALL GDALCheckVersion( int nVersionMajor, int nVersionMinor,
+                                          const char* pszCallingComponentName);
+
+/** Helper macro for GDALCheckVersion */
+#define GDAL_CHECK_VERSION(pszCallingComponentName) \
+ GDALCheckVersion(GDAL_VERSION_MAJOR, GDAL_VERSION_MINOR, pszCallingComponentName)
+
+#endif
+
 CPL_C_END
 
-#endif /* ndef _OGR_CORE_H_INCLUDED */
-
+#endif /* ndef OGR_CORE_H_INCLUDED */

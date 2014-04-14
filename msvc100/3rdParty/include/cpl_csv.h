@@ -1,10 +1,10 @@
 /******************************************************************************
- * $Id: cpl_csv.h,v 1.2 2003/06/27 16:14:22 warmerda Exp $
+ * $Id: cpl_csv.h 16759 2009-04-09 21:32:43Z rouault $
  *
  * Project:  Common Portability Library
  * Purpose:  Functions for reading and scaning CSV (comma separated,
  *           variable length text files holding tables) files.  
- * Author:   Frank Warmerdam, warmerda@home.com
+ * Author:   Frank Warmerdam, warmerdam@pobox.com
  *
  ******************************************************************************
  * Copyright (c) 1999, Frank Warmerdam
@@ -26,16 +26,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- ******************************************************************************
- *
- * $Log: cpl_csv.h,v $
- * Revision 1.2  2003/06/27 16:14:22  warmerda
- * export CSV functions with CPL_DLL
- *
- * Revision 1.1  2000/04/05 21:55:59  warmerda
- * New
- *
- */
+ ****************************************************************************/
 
 #ifndef CPL_CSV_H_INCLUDED
 #define CPL_CSV_H_INCLUDED
@@ -54,18 +45,22 @@ typedef enum {
 
 const char CPL_DLL *CSVFilename( const char * );
 
-char CPL_DLL  **CSVReadParseLine( FILE * );
+char CPL_DLL CSVDetectSeperator( const char *pszLine );
+
+char CPL_DLL  **CSVReadParseLine( FILE *fp);
+char CPL_DLL  **CSVReadParseLine2( FILE *fp, char chDelimiter );
 char CPL_DLL **CSVScanLines( FILE *, int, const char *, CSVCompareCriteria );
 char CPL_DLL **CSVScanFile( const char *, int, const char *,
                             CSVCompareCriteria );
 char CPL_DLL **CSVScanFileByName( const char *, const char *, const char *,
                                   CSVCompareCriteria );
+char CPL_DLL **CSVGetNextLine( const char * );
 int CPL_DLL CSVGetFieldId( FILE *, const char * );
 int CPL_DLL CSVGetFileFieldId( const char *, const char * );
 
 void CPL_DLL CSVDeaccess( const char * );
 
-const char  *CSVGetField( const char *, const char *, const char *,
+const char CPL_DLL *CSVGetField( const char *, const char *, const char *,
                                  CSVCompareCriteria, const char * );
 
 void CPL_DLL SetCSVFilenameHook( const char *(*)(const char *) );

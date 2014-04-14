@@ -1,5 +1,5 @@
 /******************************************************************************
- * $Id: cpl_conv.h,v 1.35 2004/11/17 22:57:21 fwarmerdam Exp $
+ * $Id: cpl_conv.h 27121 2014-04-03 22:08:55Z rouault $
  *
  * Project:  CPL - Common Portability Library
  * Purpose:  Convenience functions declarations.
@@ -8,6 +8,7 @@
  *
  ******************************************************************************
  * Copyright (c) 1998, Frank Warmerdam
+ * Copyright (c) 2007-2013, Even Rouault <even dot rouault at mines-paris dot org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -26,85 +27,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- ******************************************************************************
- *
- * $Log: cpl_conv.h,v $
- * Revision 1.35  2004/11/17 22:57:21  fwarmerdam
- * added CPLScanPointer() and CPLPrintPointer()
- *
- * Revision 1.34  2004/08/16 20:24:07  warmerda
- * added CPLUnlinkTree
- *
- * Revision 1.33  2004/08/11 18:41:46  warmerda
- * added CPLExtractRelativePath
- *
- * Revision 1.32  2004/07/31 04:51:36  warmerda
- * added shared file open support
- *
- * Revision 1.31  2004/03/28 16:22:02  warmerda
- * const correctness changes in scan functions
- *
- * Revision 1.30  2004/03/24 09:01:17  dron
- * Added CPLPrintUIntBig().
- *
- * Revision 1.29  2004/02/07 14:03:30  dron
- * CPLDecToPackedDMS() added.
- *
- * Revision 1.28  2004/02/01 08:37:55  dron
- * Added CPLPackedDMSToDec().
- *
- * Revision 1.27  2003/12/28 17:24:43  warmerda
- * added CPLFreeConfig
- *
- * Revision 1.26  2003/10/17 07:06:06  dron
- * Added locale selection option to CPLScanDouble() and CPLPrintDOuble().
- *
- * Revision 1.25  2003/09/28 14:14:16  dron
- * Added CPLScanString().
- *
- * Revision 1.24  2003/09/08 11:09:53  dron
- * Added CPLPrintDouble() and CPLPrintTime().
- *
- * Revision 1.23  2003/09/07 14:38:43  dron
- * Added CPLPrintString(), CPLPrintStringFill(), CPLPrintInt32(), CPLPrintUIntBig().
- *
- * Revision 1.22  2003/08/31 14:48:05  dron
- * Added CPLScanLong() and CPLScanDouble().
- *
- * Revision 1.21  2003/08/25 20:01:58  dron
- * Added CPLFGets() helper function.
- *
- * Revision 1.20  2003/05/08 21:51:14  warmerda
- * added CPL{G,S}etConfigOption() usage
- *
- * Revision 1.19  2003/03/02 04:44:38  warmerda
- * added CPLStringToComplex
- *
- * Revision 1.18  2002/12/13 06:00:54  warmerda
- * added CPLProjectRelativeFilename() and CPLIsFilenameRelative()
- *
- * Revision 1.17  2002/12/09 18:52:51  warmerda
- * added DMS conversion
- *
- * Revision 1.16  2002/12/03 04:42:02  warmerda
- * improved finder cleanup support
- *
- * Revision 1.15  2002/08/15 09:23:24  dron
- * Added CPLGetDirname() function
- *
- * Revision 1.14  2002/02/01 20:39:50  warmerda
- * ensure CPLReadLine() is exported from DLL
- *
- * Revision 1.13  2001/12/12 17:06:57  warmerda
- * added CPLStat
- *
- * Revision 1.12  2001/03/16 22:15:08  warmerda
- * added CPLResetExtension
- *
- * Revision 1.1  1998/10/18 06:15:11  warmerda
- * Initial implementation.
- *
- */
+ ****************************************************************************/
 
 #ifndef CPL_CONV_H_INCLUDED
 #define CPL_CONV_H_INCLUDED
@@ -125,20 +48,24 @@
 /* -------------------------------------------------------------------- */
 CPL_C_START
 
-void CPL_DLL CPLVerifyConfiguration();
+void CPL_DLL CPLVerifyConfiguration(void);
 
-const char CPL_DLL *CPLGetConfigOption( const char *, const char * );
-void CPL_DLL        CPLSetConfigOption( const char *, const char * );
-void CPL_DLL        CPLFreeConfig();
+const char CPL_DLL * CPL_STDCALL
+CPLGetConfigOption( const char *, const char * ) CPL_WARN_UNUSED_RESULT;
+void CPL_DLL CPL_STDCALL CPLSetConfigOption( const char *, const char * );
+void CPL_DLL CPL_STDCALL CPLSetThreadLocalConfigOption( const char *pszKey, 
+                                                        const char *pszValue );
+void CPL_DLL CPL_STDCALL CPLFreeConfig(void);
 
 /* -------------------------------------------------------------------- */
 /*      Safe malloc() API.  Thin cover over VSI functions with fatal    */
 /*      error reporting if memory allocation fails.                     */
 /* -------------------------------------------------------------------- */
-void CPL_DLL *CPLMalloc( size_t );
-void CPL_DLL *CPLCalloc( size_t, size_t );
-void CPL_DLL *CPLRealloc( void *, size_t );
-char CPL_DLL *CPLStrdup( const char * );
+void CPL_DLL *CPLMalloc( size_t ) CPL_WARN_UNUSED_RESULT;
+void CPL_DLL *CPLCalloc( size_t, size_t ) CPL_WARN_UNUSED_RESULT;
+void CPL_DLL *CPLRealloc( void *, size_t ) CPL_WARN_UNUSED_RESULT;
+char CPL_DLL *CPLStrdup( const char * ) CPL_WARN_UNUSED_RESULT;
+char CPL_DLL *CPLStrlwr( char *);
 
 #define CPLFree VSIFree
 
@@ -147,13 +74,33 @@ char CPL_DLL *CPLStrdup( const char * );
 /* -------------------------------------------------------------------- */
 char CPL_DLL *CPLFGets( char *, int, FILE *);
 const char CPL_DLL *CPLReadLine( FILE * );
+const char CPL_DLL *CPLReadLineL( VSILFILE * );
+const char CPL_DLL *CPLReadLine2L( VSILFILE * , int nMaxCols, char** papszOptions);
+
+/* -------------------------------------------------------------------- */
+/*      Convert ASCII string to floationg point number                  */
+/*      (THESE FUNCTIONS ARE NOT LOCALE AWARE!).                        */
+/* -------------------------------------------------------------------- */
+double CPL_DLL CPLAtof(const char *);
+double CPL_DLL CPLAtofDelim(const char *, char);
+double CPL_DLL CPLStrtod(const char *, char **);
+double CPL_DLL CPLStrtodDelim(const char *, char **, char);
+float CPL_DLL CPLStrtof(const char *, char **);
+float CPL_DLL CPLStrtofDelim(const char *, char **, char);
+
+/* -------------------------------------------------------------------- */
+/*      Convert number to string.  This function is locale agnostic     */
+/*      (ie. it will support "," or "." regardless of current locale)   */
+/* -------------------------------------------------------------------- */
+double CPL_DLL CPLAtofM(const char *);
 
 /* -------------------------------------------------------------------- */
 /*      Read a numeric value from an ASCII character string.            */
 /* -------------------------------------------------------------------- */
 char CPL_DLL *CPLScanString( const char *, int, int, int );
-double CPL_DLL CPLScanDouble( const char *, int, char * );
+double CPL_DLL CPLScanDouble( const char *, int );
 long CPL_DLL CPLScanLong( const char *, int );
+unsigned long CPL_DLL CPLScanULong( const char *, int );
 GUIntBig CPL_DLL CPLScanUIntBig( const char *, int );
 void CPL_DLL *CPLScanPointer( const char *, int );
 
@@ -164,9 +111,9 @@ int CPL_DLL CPLPrintString( char *, const char *, int );
 int CPL_DLL CPLPrintStringFill( char *, const char *, int );
 int CPL_DLL CPLPrintInt32( char *, GInt32 , int );
 int CPL_DLL CPLPrintUIntBig( char *, GUIntBig , int );
-int CPL_DLL CPLPrintDouble( char *, const char *, double, char * );
+int CPL_DLL CPLPrintDouble( char *, const char *, double, const char * );
 int CPL_DLL CPLPrintTime( char *, int , const char *, const struct tm *,
-                          char * );
+                          const char * );
 int CPL_DLL CPLPrintPointer( char *, void *, int );
 
 /* -------------------------------------------------------------------- */
@@ -176,9 +123,9 @@ int CPL_DLL CPLPrintPointer( char *, void *, int );
 void CPL_DLL *CPLGetSymbol( const char *, const char * );
 
 /* -------------------------------------------------------------------- */
-/*      Read a directory  (cpl_dir.c)                                   */
+/*      Fetch executable path.                                          */
 /* -------------------------------------------------------------------- */
-char CPL_DLL  **CPLReadDir( const char *pszPath );
+int CPL_DLL CPLGetExecPath( char *pszPathBuf, int nMaxLength );
 
 /* -------------------------------------------------------------------- */
 /*      Filename handling functions.                                    */
@@ -188,6 +135,7 @@ const char CPL_DLL *CPLGetDirname( const char * );
 const char CPL_DLL *CPLGetFilename( const char * );
 const char CPL_DLL *CPLGetBasename( const char * );
 const char CPL_DLL *CPLGetExtension( const char * );
+char       CPL_DLL *CPLGetCurrentDir(void);
 const char CPL_DLL *CPLFormFilename( const char *pszPath,
                                      const char *pszBasename,
                                      const char *pszExtension );
@@ -199,6 +147,13 @@ const char CPL_DLL *CPLProjectRelativeFilename( const char *pszProjectDir,
                                             const char *pszSecondaryFilename );
 int CPL_DLL CPLIsFilenameRelative( const char *pszFilename );
 const char CPL_DLL *CPLExtractRelativePath(const char *, const char *, int *);
+const char CPL_DLL *CPLCleanTrailingSlash( const char * );
+char CPL_DLL      **CPLCorrespondingPaths( const char *pszOldFilename, 
+                                           const char *pszNewFilename, 
+                                           char **papszFileList );
+int CPL_DLL CPLCheckForFile( char *pszFilename, char **papszSiblingList );
+
+const char CPL_DLL *CPLGenerateTempFilename( const char *pszStem );
 
 /* -------------------------------------------------------------------- */
 /*      Find File Function                                              */
@@ -210,10 +165,10 @@ const char    CPL_DLL *CPLFindFile(const char *pszClass,
 const char    CPL_DLL *CPLDefaultFindFile(const char *pszClass, 
                                           const char *pszBasename);
 void          CPL_DLL CPLPushFileFinder( CPLFileFinder pfnFinder );
-CPLFileFinder CPL_DLL CPLPopFileFinder();
+CPLFileFinder CPL_DLL CPLPopFileFinder(void);
 void          CPL_DLL CPLPushFinderLocation( const char * );
-void          CPL_DLL CPLPopFinderLocation();
-void          CPL_DLL CPLFinderClean();
+void          CPL_DLL CPLPopFinderLocation(void);
+void          CPL_DLL CPLFinderClean(void);
 
 /* -------------------------------------------------------------------- */
 /*      Safe version of stat() that works properly on stuff like "C:".  */
@@ -236,6 +191,7 @@ FILE CPL_DLL    *CPLOpenShared( const char *, const char *, int );
 void CPL_DLL     CPLCloseShared( FILE * );
 CPLSharedFileInfo CPL_DLL *CPLGetSharedList( int * );
 void CPL_DLL     CPLDumpSharedList( FILE * );
+void CPL_DLL     CPLCleanupSharedFileMutex( void );
 
 /* -------------------------------------------------------------------- */
 /*      DMS to Dec to DMS conversion.                                   */
@@ -253,6 +209,67 @@ void CPL_DLL CPLStringToComplex( const char *pszString,
 /*      Misc other functions.                                           */
 /* -------------------------------------------------------------------- */
 int CPL_DLL CPLUnlinkTree( const char * );
+int CPL_DLL CPLCopyFile( const char *pszNewPath, const char *pszOldPath );
+int CPL_DLL CPLMoveFile( const char *pszNewPath, const char *pszOldPath );
+
+/* -------------------------------------------------------------------- */
+/*      ZIP Creation.                                                   */
+/* -------------------------------------------------------------------- */
+#define CPL_ZIP_API_OFFERED
+void CPL_DLL  *CPLCreateZip( const char *pszZipFilename, char **papszOptions );
+CPLErr CPL_DLL CPLCreateFileInZip( void *hZip, const char *pszFilename, 
+                                   char **papszOptions );
+CPLErr CPL_DLL CPLWriteFileInZip( void *hZip, const void *pBuffer, int nBufferSize );
+CPLErr CPL_DLL CPLCloseFileInZip( void *hZip );
+CPLErr CPL_DLL CPLCloseZip( void *hZip );
+
+/* -------------------------------------------------------------------- */
+/*      ZLib compression                                                */
+/* -------------------------------------------------------------------- */
+
+void CPL_DLL *CPLZLibDeflate( const void* ptr, size_t nBytes, int nLevel,
+                              void* outptr, size_t nOutAvailableBytes,
+                              size_t* pnOutBytes );
+void CPL_DLL *CPLZLibInflate( const void* ptr, size_t nBytes,
+                              void* outptr, size_t nOutAvailableBytes,
+                              size_t* pnOutBytes );
+
+/* -------------------------------------------------------------------- */
+/*      XML validation.                                                 */
+/* -------------------------------------------------------------------- */
+int CPL_DLL CPLValidateXML(const char* pszXMLFilename,
+                           const char* pszXSDFilename,
+                           char** papszOptions);
+						   
+/* -------------------------------------------------------------------- */
+/*      Locale handling. Prevents parallel executions of setlocale().   */
+/* -------------------------------------------------------------------- */
+char* CPLsetlocale (int category, const char* locale);
+void CPLCleanupSetlocaleMutex(void);
+
 CPL_C_END
+
+/* -------------------------------------------------------------------- */
+/*      C++ object for temporariliy forcing a LC_NUMERIC locale to "C". */
+/* -------------------------------------------------------------------- */
+
+#if defined(__cplusplus) && !defined(CPL_SUPRESS_CPLUSPLUS)
+
+class CPL_DLL CPLLocaleC
+{
+public:
+    CPLLocaleC();
+    ~CPLLocaleC();
+
+private:
+    char *pszOldLocale;
+
+    /* Make it non-copyable */
+    CPLLocaleC(CPLLocaleC&);
+    CPLLocaleC& operator=(CPLLocaleC&);
+};
+
+#endif /* def __cplusplus */
+
 
 #endif /* ndef CPL_CONV_H_INCLUDED */

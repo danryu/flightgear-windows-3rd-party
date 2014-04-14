@@ -1,26 +1,14 @@
 /******************************************************************************
- * $Id: cpl_port.h,v 1.40 2005/03/11 14:59:07 fwarmerdam Exp $
+ * $Id: cpl_port.h 27044 2014-03-16 23:41:27Z rouault $
  *
  * Project:  CPL - Common Portability Library
  * Author:   Frank Warmerdam, warmerdam@pobox.com
- * Purpose:  
- * Include file providing low level portability services for CPL.  This
- * should be the first include file for any CPL based code.  It provides the
- * following:
- *
- * o Includes some standard system include files, such as stdio, and stdlib.
- *
- * o Defines CPL_C_START, CPL_C_END macros.
- *
- * o Ensures that some other standard macros like NULL are defined.
- *
- * o Defines some portability stuff like CPL_MSB, or CPL_LSB.
- *
- * o Ensures that core types such as GBool, GInt32, GInt16, GUInt32, 
- *   GUInt16, and GByte are defined.
+ * Purpose:  Include file providing low level portability services for CPL.  
+ *           This should be the first include file for any CPL based code.  
  *
  ******************************************************************************
- * Copyright (c) 1998, Frank Warmerdam
+ * Copyright (c) 1998, 2005, Frank Warmerdam <warmerdam@pobox.com>
+ * Copyright (c) 2008-2013, Even Rouault <even dot rouault at mines-paris dot org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -39,79 +27,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- ******************************************************************************
- *
- * $Log: cpl_port.h,v $
- * Revision 1.40  2005/03/11 14:59:07  fwarmerdam
- * Default to assuming nothing is infinite if isinf() macro not defined.
- * Per http://bugzilla.remotesensing.org/show_bug.cgi?id=795
- *
- * Revision 1.39  2005/03/01 21:22:07  fwarmerdam
- * added CPLIsFinite()
- *
- * Revision 1.38  2005/03/01 20:44:38  fwarmerdam
- * Check for _MSC_VER instead of WIN32.
- *
- * Revision 1.37  2005/03/01 19:57:55  fwarmerdam
- * Added CPLIsNan and CPLIsInf macros.
- *
- * Revision 1.36  2004/01/06 21:42:32  warmerda
- * "Fix" for bug 455 related to CPL_IS_LSB macro.
- *
- * Revision 1.35  2003/12/11 03:16:02  warmerda
- * Added CPL_IS_LSB macro with value 0 (MSB) or 1 (LSB).
- *
- * Revision 1.34  2003/09/08 11:11:05  dron
- * Include time.h and locale.h.
- *
- * Revision 1.33  2003/05/12 14:52:56  warmerda
- * Use _MSC_VER to test for Microsoft Visual C++ compiler.
- *
- * Revision 1.32  2002/10/24 20:24:40  warmerda
- * avoid using variable names likely to conflict in macros
- *
- * Revision 1.31  2002/07/15 13:31:46  warmerda
- * CPL_SWAPDOUBLE had alignment problem, use CPL_SWAP64PTR
- *
- * Revision 1.30  2002/04/18 18:55:06  dron
- * added <ctype.h> at the list of standard include files
- *
- * Revision 1.29  2002/01/17 01:40:27  warmerda
- * added _LARGEFILE64_SOURCE support
- *
- * Revision 1.28  2001/08/30 21:20:49  warmerda
- * expand tabs
- *
- * Revision 1.27  2001/07/18 04:00:49  warmerda
- * added CPL_CVSID
- *
- * Revision 1.26  2001/06/21 21:17:26  warmerda
- * added irix 64bit file api support
- *
- * Revision 1.25  2001/04/30 18:18:38  warmerda
- * added macos support, standard header
- *
- * Revision 1.24  2001/01/19 21:16:41  warmerda
- * expanded tabs
- *
- * Revision 1.23  2001/01/13 04:06:39  warmerda
- * added strings.h on AIX as per patch from Dale.
- *
- * Revision 1.22  2001/01/03 16:18:07  warmerda
- * added GUIntBig
- *
- * Revision 1.21  2000/10/20 04:20:33  warmerda
- * added SWAP16PTR macros
- *
- * Revision 1.20  2000/10/13 17:32:42  warmerda
- * check for unix instead of IGNORE_WIN32
- *
- * Revision 1.19  2000/09/25 19:58:43  warmerda
- * ensure win32 doesn't get defined in Cygnus builds
- *
- * Revision 1.18  2000/07/20 13:15:03  warmerda
- * don't redeclare CPL_DLL
- */
+ ****************************************************************************/
 
 #ifndef CPL_BASE_H_INCLUDED
 #define CPL_BASE_H_INCLUDED
@@ -134,15 +50,53 @@
 /* ==================================================================== */
 /*      We will use WIN32 as a standard windows define.                 */
 /* ==================================================================== */
-#if defined(_WIN32) && !defined(WIN32)
+#if defined(_WIN32) && !defined(WIN32) && !defined(_WIN32_WCE)
 #  define WIN32
 #endif
 
-#if defined(_WINDOWS) && !defined(WIN32)
+#if defined(_WINDOWS) && !defined(WIN32) && !defined(_WIN32_WCE)
 #  define WIN32
+#endif
+
+/* ==================================================================== */
+/*      We will use WIN32CE as a standard Windows CE (Mobile) define.   */
+/* ==================================================================== */
+#if defined(_WIN32_WCE)
+#  define WIN32CE
+#endif
+
+/* -------------------------------------------------------------------- */
+/*      The following apparently allow you to use strcpy() and other    */
+/*      functions judged "unsafe" by microsoft in VS 8 (2005).          */
+/* -------------------------------------------------------------------- */
+#ifdef _MSC_VER
+#  ifndef _CRT_SECURE_NO_DEPRECATE
+#    define _CRT_SECURE_NO_DEPRECATE
+#  endif
+#  ifndef _CRT_NONSTDC_NO_DEPRECATE
+#    define _CRT_NONSTDC_NO_DEPRECATE
+#  endif
 #endif
 
 #include "cpl_config.h"
+
+/* ==================================================================== */
+/*      A few sanity checks, mainly to detect problems that sometimes   */
+/*      arise with bad configured cross-compilation.                    */
+/* ==================================================================== */
+
+#if !defined(SIZEOF_INT) || SIZEOF_INT != 4
+#error "Unexpected value for SIZEOF_INT"
+#endif
+
+#if !defined(SIZEOF_UNSIGNED_LONG) || (SIZEOF_UNSIGNED_LONG != 4 && SIZEOF_UNSIGNED_LONG != 8)
+#error "Unexpected value for SIZEOF_UNSIGNED_LONG"
+#endif
+
+#if !defined(SIZEOF_VOIDP) || (SIZEOF_VOIDP != 4 && SIZEOF_VOIDP != 8)
+#error "Unexpected value for SIZEOF_VOIDP"
+#endif
+
 
 /* ==================================================================== */
 /*      This will disable most WIN32 stuff in a Cygnus build which      */
@@ -151,10 +105,36 @@
 
 #ifdef unix
 #  undef WIN32
+#  undef WIN32CE
 #endif
 
 #if defined(VSI_NEED_LARGEFILE64_SOURCE) && !defined(_LARGEFILE64_SOURCE)
 #  define _LARGEFILE64_SOURCE 1
+#endif
+
+/* ==================================================================== */
+/*      If iconv() is available use extended recoding module.           */
+/*      Stub implementation is always compiled in, because it works     */
+/*      faster than iconv() for encodings it supports.                  */
+/* ==================================================================== */
+
+#if defined(HAVE_ICONV)
+#  define CPL_RECODE_ICONV
+#endif
+
+#define CPL_RECODE_STUB
+
+/* ==================================================================== */
+/*      MinGW stuff                                                     */
+/* ==================================================================== */
+
+/* We need __MSVCRT_VERSION__ >= 0x0601 to have "struct __stat64" */
+/* Latest versions of mingw32 define it, but with older ones, */
+/* we need to define it manually */
+#if defined(__MINGW32__)
+#ifndef __MSVCRT_VERSION__
+#define __MSVCRT_VERSION__ 0x0601
+#endif
 #endif
 
 /* ==================================================================== */
@@ -167,14 +147,29 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
-#include <errno.h>
-#include <time.h>
+#include <limits.h>
+
+#if !defined(WIN32CE)
+#  include <time.h>
+#else
+#  include <wce_time.h>
+#  include <wce_errno.h>
+#endif
+
+
+#if defined(HAVE_ERRNO_H)
+#  include <errno.h>
+#endif 
 
 #ifdef HAVE_LOCALE_H
 #  include <locale.h>
 #endif
 
-#ifdef _AIX
+#ifdef HAVE_DIRECT_H
+#  include <direct.h>
+#endif
+
+#if !(defined(WIN32) || defined(WIN32CE))
 #  include <strings.h>
 #endif
 
@@ -207,7 +202,12 @@ typedef unsigned int    GUInt32;
 typedef short           GInt16;
 typedef unsigned short  GUInt16;
 typedef unsigned char   GByte;
+/* hack for PDF driver and poppler >= 0.15.0 that defines incompatible "typedef bool GBool" */
+/* in include/poppler/goo/gtypes.h */
+#ifndef CPL_GBOOL_DEFINED
+#define CPL_GBOOL_DEFINED
 typedef int             GBool;
+#endif
 
 /* -------------------------------------------------------------------- */
 /*      64bit support                                                   */
@@ -231,6 +231,24 @@ typedef unsigned long    GUIntBig;
 
 #endif
 
+#if defined(__MSVCRT__) || (defined(WIN32) && defined(_MSC_VER))
+  #define CPL_FRMT_GB_WITHOUT_PREFIX     "I64"
+#elif HAVE_LONG_LONG
+  #define CPL_FRMT_GB_WITHOUT_PREFIX     "ll"
+#else
+  #define CPL_FRMT_GB_WITHOUT_PREFIX     "l"
+#endif
+
+#define CPL_FRMT_GIB     "%" CPL_FRMT_GB_WITHOUT_PREFIX "d"
+#define CPL_FRMT_GUIB    "%" CPL_FRMT_GB_WITHOUT_PREFIX "u"
+
+/* Workaround VC6 bug */
+#if defined(_MSC_VER) && (_MSC_VER <= 1200)
+#define GUINTBIG_TO_DOUBLE(x) (double)(GIntBig)(x)
+#else
+#define GUINTBIG_TO_DOUBLE(x) (double)(x)
+#endif
+
 /* ==================================================================== */
 /*      Other standard services.                                        */
 /* ==================================================================== */
@@ -246,10 +264,45 @@ typedef unsigned long    GUIntBig;
 #if defined(_MSC_VER) && !defined(CPL_DISABLE_DLL)
 #  define CPL_DLL     __declspec(dllexport)
 #else
-#  define CPL_DLL
+#  if defined(USE_GCC_VISIBILITY_FLAG)
+#    define CPL_DLL     __attribute__ ((visibility("default")))
+#  else
+#    define CPL_DLL
+#  endif
 #endif
 #endif
 
+/* Should optional (normally private) interfaces be exported? */
+#ifdef CPL_OPTIONAL_APIS
+#  define CPL_ODLL CPL_DLL
+#else
+#  define CPL_ODLL
+#endif
+
+#ifndef CPL_STDCALL
+#if defined(_MSC_VER) && !defined(CPL_DISABLE_STDCALL)
+#  define CPL_STDCALL     __stdcall
+#else
+#  define CPL_STDCALL
+#endif
+#endif
+
+#ifdef _MSC_VER
+#  define FORCE_CDECL  __cdecl
+#else
+#  define FORCE_CDECL 
+#endif
+
+/* TODO : support for other compilers needed */
+#if defined(__GNUC__) || defined(_MSC_VER)
+#define HAS_CPL_INLINE  1
+#define CPL_INLINE __inline
+#elif defined(__SUNPRO_CC)
+#define HAS_CPL_INLINE  1
+#define CPL_INLINE inline
+#else
+#define CPL_INLINE
+#endif
 
 #ifndef NULL
 #  define NULL  0
@@ -272,14 +325,32 @@ typedef unsigned long    GUIntBig;
 #  define ABS(x)        ((x<0) ? (-1*(x)) : x)
 #endif
 
-#ifndef EQUAL
-#ifdef WIN32
-#  define EQUALN(a,b,n)           (strnicmp(a,b,n)==0)
-#  define EQUAL(a,b)              (stricmp(a,b)==0)
-#else
-#  define EQUALN(a,b,n)           (strncasecmp(a,b,n)==0)
-#  define EQUAL(a,b)              (strcasecmp(a,b)==0)
+#ifndef M_PI
+# define M_PI		3.14159265358979323846	/* pi */
 #endif
+
+/* -------------------------------------------------------------------- */
+/*      Macro to test equality of two floating point values.            */
+/*      We use fabs() function instead of ABS() macro to avoid side     */
+/*      effects.                                                        */
+/* -------------------------------------------------------------------- */
+#ifndef CPLIsEqual
+#  define CPLIsEqual(x,y) (fabs((x) - (y)) < 0.0000000000001)
+#endif
+
+/* -------------------------------------------------------------------- */
+/*      Provide macros for case insensitive string comparisons.         */
+/* -------------------------------------------------------------------- */
+#ifndef EQUAL
+#  if defined(WIN32) || defined(WIN32CE)
+#    define STRCASECMP(a,b)         (stricmp(a,b))
+#    define STRNCASECMP(a,b,n)      (strnicmp(a,b,n))
+#  else
+#    define STRCASECMP(a,b)         (strcasecmp(a,b))
+#    define STRNCASECMP(a,b,n)      (strncasecmp(a,b,n))
+#  endif
+#  define EQUALN(a,b,n)           (STRNCASECMP(a,b,n)==0)
+#  define EQUAL(a,b)              (STRCASECMP(a,b)==0)
 #endif
 
 #ifdef macos_pre10
@@ -288,16 +359,21 @@ int strncasecmp(char * str1, char * str2, int len);
 char * strdup (char *instr);
 #endif
 
+#ifndef CPL_THREADLOCAL
+#  define CPL_THREADLOCAL
+#endif
+
 /* -------------------------------------------------------------------- */
 /*      Handle isnan() and isinf().  Note that isinf() and isnan()      */
-/*      are supposed to be macros according to C99.  Some systems       */
-/*      (ie. Tru64) don't have isinf() at all, so if the macro is       */
-/*      not defined we just assume nothing is infinite.  This may       */
-/*      mean we have no real CPLIsInf() on systems with an isinf()      */
+/*      are supposed to be macros according to C99, defined in math.h   */
+/*      Some systems (ie. Tru64) don't have isinf() at all, so if       */
+/*      the macro is not defined we just assume nothing is infinite.    */
+/*      This may mean we have no real CPLIsInf() on systems with isinf()*/
 /*      function but no corresponding macro, but I can live with        */
 /*      that since it isn't that important a test.                      */
 /* -------------------------------------------------------------------- */
 #ifdef _MSC_VER
+#  include <float.h>
 #  define CPLIsNan(x) _isnan(x)
 #  define CPLIsInf(x) (!_isnan(x) && !_finite(x))
 #  define CPLIsFinite(x) _finite(x)
@@ -390,7 +466,7 @@ char * strdup (char *instr);
                                                             
 
 /* Until we have a safe 64 bits integer data type defined, we'll replace
-m * this version of the CPL_SWAP64() macro with a less efficient one.
+ * this version of the CPL_SWAP64() macro with a less efficient one.
  */
 /*
 #define CPL_SWAP64(x) \
@@ -431,6 +507,35 @@ m * this version of the CPL_SWAP64() macro with a less efficient one.
 #  define CPL_MSBPTR64(x)       CPL_SWAP64PTR(x)
 #endif
 
+/** Return a Int16 from the 2 bytes ordered in LSB order at address x */
+#define CPL_LSBINT16PTR(x)    ((*(GByte*)(x)) | ((*(GByte*)((x)+1)) << 8))
+
+/** Return a Int32 from the 4 bytes ordered in LSB order at address x */
+#define CPL_LSBINT32PTR(x)    ((*(GByte*)(x)) | ((*(GByte*)((x)+1)) << 8) | \
+                              ((*(GByte*)((x)+2)) << 16) | ((*(GByte*)((x)+3)) << 24))
+
+/** Return a signed Int16 from the 2 bytes ordered in LSB order at address x */
+#define CPL_LSBSINT16PTR(x) ((GInt16) CPL_LSBINT16PTR(x))
+
+/** Return a unsigned Int16 from the 2 bytes ordered in LSB order at address x */
+#define CPL_LSBUINT16PTR(x) ((GUInt16)CPL_LSBINT16PTR(x))
+
+/** Return a signed Int32 from the 4 bytes ordered in LSB order at address x */
+#define CPL_LSBSINT32PTR(x) ((GInt32) CPL_LSBINT32PTR(x))
+
+/** Return a unsigned Int32 from the 4 bytes ordered in LSB order at address x */
+#define CPL_LSBUINT32PTR(x) ((GUInt32)CPL_LSBINT32PTR(x))
+
+
+/* Utility macro to explicitly mark intentionally unreferenced parameters. */
+#ifndef UNREFERENCED_PARAM 
+#  ifdef UNREFERENCED_PARAMETER /* May be defined by Windows API */
+#    define UNREFERENCED_PARAM(param) UNREFERENCED_PARAMETER(param)
+#  else
+#    define UNREFERENCED_PARAM(param) ((void)param)
+#  endif /* UNREFERENCED_PARAMETER */
+#endif /* UNREFERENCED_PARAM */
+
 /***********************************************************************
  * Define CPL_CVSID() macro.  It can be disabled during a build by
  * defining DISABLE_CPLID in the compiler options.
@@ -440,10 +545,54 @@ m * this version of the CPL_SWAP64() macro with a less efficient one.
  */
 
 #ifndef DISABLE_CVSID
+#if defined(__GNUC__) && __GNUC__ >= 4
+#  define CPL_CVSID(string)     static char cpl_cvsid[] __attribute__((used)) = string;
+#else
 #  define CPL_CVSID(string)     static char cpl_cvsid[] = string; \
 static char *cvsid_aw() { return( cvsid_aw() ? ((char *) NULL) : cpl_cvsid ); }
+#endif
 #else
 #  define CPL_CVSID(string)
+#endif
+
+/* Null terminated variadic */
+#if defined(__GNUC__) && __GNUC__ >= 4 && !defined(DOXYGEN_SKIP)
+#   define CPL_NULL_TERMINATED     __attribute__((__sentinel__))
+#else
+#   define CPL_NULL_TERMINATED
+#endif
+
+#if defined(__GNUC__) && __GNUC__ >= 3 && !defined(DOXYGEN_SKIP)
+#define CPL_PRINT_FUNC_FORMAT( format_idx, arg_idx )  __attribute__((__format__ (__printf__, format_idx, arg_idx)))
+#else
+#define CPL_PRINT_FUNC_FORMAT( format_idx, arg_idx )
+#endif
+
+#if defined(__GNUC__) && __GNUC__ >= 4 && !defined(DOXYGEN_SKIP)
+#define CPL_WARN_UNUSED_RESULT                        __attribute__((warn_unused_result))
+#else
+#define CPL_WARN_UNUSED_RESULT
+#endif
+
+#if defined(__GNUC__) && __GNUC__ >= 3 && !defined(DOXYGEN_SKIP)
+#define CPL_NO_RETURN                                __attribute__((noreturn))
+#else
+#define CPL_NO_RETURN
+#endif
+
+#if !defined(DOXYGEN_SKIP)
+#if defined(__has_extension)
+  #if __has_extension(attribute_deprecated_with_message)
+    /* Clang extension */
+    #define CPL_WARN_DEPRECATED(x)                       __attribute__ ((deprecated(x)))
+  #else
+    #define CPL_WARN_DEPRECATED(x)
+  #endif
+#elif defined(__GNUC__)
+    #define CPL_WARN_DEPRECATED(x)                       __attribute__ ((deprecated))
+#else
+  #define CPL_WARN_DEPRECATED(x)
+#endif
 #endif
 
 #endif /* ndef CPL_BASE_H_INCLUDED */

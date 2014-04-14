@@ -1,5 +1,5 @@
 /**********************************************************************
- * $Id: cpl_list.h,v 1.2 2003/06/27 16:14:05 warmerda Exp $
+ * $Id: cpl_list.h 26927 2014-02-11 15:54:59Z goatbar $
  *
  * Name:     cpl_list.h
  * Project:  CPL - Common Portability Library
@@ -26,17 +26,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
  * DEALINGS IN THE SOFTWARE.
- **********************************************************************
- *
- * $Log: cpl_list.h,v $
- * Revision 1.2  2003/06/27 16:14:05  warmerda
- * regularized CPLList declaration
- *
- * Revision 1.1  2003/06/25 07:45:57  dron
- * New.
- *
- *
- **********************************************************************/
+ ****************************************************************************/
 
 #ifndef _CPL_LIST_H_INCLUDED
 #define _CPL_LIST_H_INCLUDED
@@ -57,12 +47,12 @@ CPL_C_START
 /** List element structure. */
 typedef struct _CPLList
 {
-    /*! Pointer to the data object. Should be allocated and frred by the
+    /*! Pointer to the data object. Should be allocated and freed by the
      * caller.
      * */
     void        *pData;
     /*! Pointer to the next element in list. NULL, if current element is the
-     * last one
+     * last one.
      */
     struct _CPLList    *psNext;
 } CPLList;
@@ -80,4 +70,3 @@ void CPL_DLL *CPLListGetData( CPLList *psElement );
 CPL_C_END
 
 #endif /* _CPL_LIST_H_INCLUDED */
-
