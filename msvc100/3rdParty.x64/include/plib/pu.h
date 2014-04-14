@@ -18,7 +18,7 @@
 
      For further information visit http://plib.sourceforge.net
 
-     $Id: pu.h 2148 2009-01-29 17:11:24Z fayjf $
+     $Id: pu.h 2160 2010-02-27 03:48:23Z fayjf $
 */
 
 #ifndef _PU_H_
@@ -36,6 +36,8 @@
 #define PU_LEFT_BUTTON          0
 #define PU_MIDDLE_BUTTON        1
 #define PU_RIGHT_BUTTON         2
+#define PU_SCROLL_UP_BUTTON     3
+#define PU_SCROLL_DOWN_BUTTON   4
 #define PU_DOWN                 0
 #define PU_UP                   1
 
