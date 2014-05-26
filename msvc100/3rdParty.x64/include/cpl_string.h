@@ -1,5 +1,5 @@
 /**********************************************************************
- * $Id: cpl_string.h 27044 2014-03-16 23:41:27Z rouault $
+ * $Id: cpl_string.h 27384 2014-05-24 12:28:12Z rouault $
  *
  * Name:     cpl_string.h
  * Project:  CPL - Common Portability Library
@@ -94,6 +94,7 @@ char CPL_DLL **CSLInsertString(char **papszStrList, int nInsertAtLineNo,
 char CPL_DLL **CSLRemoveStrings(char **papszStrList, int nFirstLineToDelete,
                          int nNumToRemove, char ***ppapszRetStrings) CPL_WARN_UNUSED_RESULT;
 int CPL_DLL CSLFindString( char **, const char * );
+int CPL_DLL CSLFindStringCaseSensitive( char **, const char * );
 int CPL_DLL CSLPartialFindString( char **papszHaystack, 
 	const char * pszNeedle );
 int CPL_DLL CSLFindName(char **papszStrList, const char *pszName);
