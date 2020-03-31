@@ -17,11 +17,12 @@
 
 // Boost.Test
 #include <boost/test/detail/config.hpp>
-#include <boost/test/detail/workaround.hpp>
 #include <boost/test/detail/global_typedef.hpp>
 
 #include <boost/test/debug.hpp>
 #include <boost/test/debug_config.hpp>
+
+#include <boost/core/ignore_unused.hpp>
 
 // Implementation on Windows
 #if defined(_WIN32) && !defined(UNDER_CE) && !defined(BOOST_DISABLE_WIN32) // ******* WIN32
@@ -752,6 +753,29 @@ set_debugger( unit_test::const_string, dbg_starter )
 // **************    attach debugger to the current process    ************** //
 // ************************************************************************** //
 
+#if defined(BOOST_WIN32_BASED_DEBUG)
+
+struct safe_handle_helper
+{
+    HANDLE& handle;
+    safe_handle_helper(HANDLE &handle_) : handle(handle_) {}
+
+    void close_handle()
+    {
+        if( handle != INVALID_HANDLE_VALUE )
+        {
+            ::CloseHandle( handle );
+            handle = INVALID_HANDLE_VALUE;
+        }
+    }
+
+    ~safe_handle_helper()
+    {
+        close_handle();
+    }
+};
+#endif
+
 bool
 attach_debugger( bool break_or_continue )
 {
@@ -782,6 +806,8 @@ attach_debugger( bool break_or_continue )
     if( !dbg_init_done_ev )
         return false;
 
+    safe_handle_helper safe_handle_obj( dbg_init_done_ev );
+
     // *************************************************** //
     // Debugger command line format
 
@@ -797,16 +823,19 @@ attach_debugger( bool break_or_continue )
     DWORD format_size = MAX_CMD_LINE;
     DWORD type = REG_SZ;
 
-    if( !s_info.m_reg_query_value || (*s_info.m_reg_query_value)(
+    bool b_read_key = s_info.m_reg_query_value &&
+          ((*s_info.m_reg_query_value)(
             reg_key,                            // handle of open key
             "Debugger",                         // name of subkey to query
             0,                                  // reserved
             &type,                              // value type
             (LPBYTE)format,                     // buffer for returned string
-            &format_size ) != ERROR_SUCCESS )   // in: buffer size; out: actual size of returned string
-        return false;
+            &format_size ) == ERROR_SUCCESS );  // in: buffer size; out: actual size of returned string
 
     if( !s_info.m_reg_close_key || (*s_info.m_reg_close_key)( reg_key ) != ERROR_SUCCESS )
+        return false;
+
+    if( !b_read_key )
         return false;
 
     // *************************************************** //
@@ -841,12 +870,16 @@ attach_debugger( bool break_or_continue )
         &debugger_info  // pointer to PROCESS_INFORMATION that will contain the new process identification
     );
 
+    bool debugger_run_ok = false;
     if( created )
-        ::WaitForSingleObject( dbg_init_done_ev, INFINITE );
+    {
+        DWORD ret_code = ::WaitForSingleObject( dbg_init_done_ev, INFINITE );
+        debugger_run_ok = ( ret_code == WAIT_OBJECT_0 );
+    }
 
-    ::CloseHandle( dbg_init_done_ev );
+    safe_handle_obj.close_handle();
 
-    if( !created )
+    if( !created || !debugger_run_ok )
         return false;
 
     if( break_or_continue )
@@ -906,7 +939,7 @@ attach_debugger( bool break_or_continue )
     return true;
 
 #else // ****************************************************** default
-
+    (void) break_or_continue; // silence 'unused variable' warning
     return false;
 
 #endif
@@ -921,7 +954,7 @@ attach_debugger( bool break_or_continue )
 void
 detect_memory_leaks( bool on_off, unit_test::const_string report_file )
 {
-    unit_test::ut_detail::ignore_unused_variable_warning( on_off );
+    boost::ignore_unused( on_off );
 
 #ifdef BOOST_MS_CRT_BASED_DEBUG
     int flags = _CrtSetDbgFlag( _CRTDBG_REPORT_FLAG );
@@ -943,7 +976,7 @@ detect_memory_leaks( bool on_off, unit_test::const_string report_file )
 
     _CrtSetDbgFlag ( flags );
 #else
-    unit_test::ut_detail::ignore_unused_variable_warning( report_file );
+    boost::ignore_unused( report_file );
 #endif // BOOST_MS_CRT_BASED_DEBUG
 }
 
@@ -957,7 +990,7 @@ detect_memory_leaks( bool on_off, unit_test::const_string report_file )
 void
 break_memory_alloc( long mem_alloc_order_num )
 {
-    unit_test::ut_detail::ignore_unused_variable_warning( mem_alloc_order_num );
+    boost::ignore_unused( mem_alloc_order_num );
 
 #ifdef BOOST_MS_CRT_BASED_DEBUG
     // only set the value if one was supplied (do not use default used by UTF just as a indicator to enable leak detection)
@@ -974,4 +1007,3 @@ break_memory_alloc( long mem_alloc_order_num )
 #include <boost/test/detail/enable_warnings.hpp>
 
 #endif // BOOST_TEST_DEBUG_API_IPP_112006GER
-

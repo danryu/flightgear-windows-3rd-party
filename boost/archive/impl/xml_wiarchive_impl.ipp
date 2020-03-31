@@ -20,23 +20,23 @@ namespace std{
 
 #include <boost/assert.hpp>
 #include <algorithm> // std::copy
-
 #include <boost/detail/workaround.hpp> // Dinkumware and RogueWave
 #if BOOST_WORKAROUND(BOOST_DINKUMWARE_STDLIB, == 1)
 #include <boost/archive/dinkumware.hpp>
 #endif
 
 #include <boost/io/ios_state.hpp>
+#include <boost/core/uncaught_exceptions.hpp>
 #include <boost/core/no_exceptions_support.hpp>
 #include <boost/serialization/string.hpp>
 
 #include <boost/archive/basic_xml_archive.hpp>
 #include <boost/archive/xml_wiarchive.hpp>
 
-#include <boost/archive/add_facet.hpp>
-
 #include <boost/archive/xml_archive_exception.hpp>
 #include <boost/archive/iterators/mb_from_wchar.hpp>
+
+#include <boost/archive/detail/utf8_codecvt_facet.hpp>
 
 #include "basic_xml_grammar.hpp"
 
@@ -161,15 +161,13 @@ xml_wiarchive_impl<Archive>::xml_wiarchive_impl(
     gimpl(new xml_wgrammar())
 {
     if(0 == (flags & no_codecvt)){
-        // note usage of argument "1" so that the locale isn't
-        // automatically delete the facet
-        archive_locale.reset(
-            add_facet(
-                is_.getloc(),
-                new boost::archive::detail::utf8_codecvt_facet
-            )
+        archive_locale = std::locale(
+            is_.getloc(),
+            new boost::archive::detail::utf8_codecvt_facet
         );
-        //is.imbue(* archive_locale);
+        // libstdc++ crashes without this
+        is_.sync();
+        is_.imbue(archive_locale);
     }
     if(0 == (flags & no_header))
         init();
@@ -178,12 +176,10 @@ xml_wiarchive_impl<Archive>::xml_wiarchive_impl(
 template<class Archive>
 BOOST_WARCHIVE_DECL
 xml_wiarchive_impl<Archive>::~xml_wiarchive_impl(){
+    if(boost::core::uncaught_exceptions() > 0)
+        return;
     if(0 == (this->get_flags() & no_header)){
-        BOOST_TRY{
-            gimpl->windup(is);
-        }
-        BOOST_CATCH(...){}
-        BOOST_CATCH_END
+        gimpl->windup(is);
     }
 }
 

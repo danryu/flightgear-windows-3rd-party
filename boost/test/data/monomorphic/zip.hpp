@@ -17,8 +17,11 @@
 
 #if !defined(BOOST_TEST_NO_ZIP_COMPOSITION_AVAILABLE) || defined(BOOST_TEST_DOXYGEN_DOC__)
 
-#include <boost/test/data/traits.hpp>
 #include <boost/test/data/monomorphic/fwd.hpp>
+#include <boost/test/data/monomorphic/sample_merge.hpp>
+
+#include <boost/core/enable_if.hpp>
+#include <boost/mpl/identity.hpp>
 
 #include <boost/test/detail/suppress_warnings.hpp>
 
@@ -27,51 +30,6 @@ namespace boost {
 namespace unit_test {
 namespace data {
 namespace monomorphic {
-
-namespace ds_detail {
-
-// !! ?? variadic template implementation; use forward_as_tuple?
-template<typename T1, typename T2>
-struct zip_traits {
-    typedef std::tuple<T1,T2> type;
-    typedef typename data::traits<type>::ref_type ref_type;
-
-    static ref_type
-    tuple_merge(T1 const& a1, T2 const& a2)
-    {
-        return ref_type(a1,a2);
-    }
-};
-
-//____________________________________________________________________________//
-
-template<typename T1, typename T2,typename T3>
-struct zip_traits<T1,std::tuple<T2,T3>> {
-    typedef std::tuple<T1,T2,T3> type;
-    typedef typename data::traits<type>::ref_type ref_type;
-
-    static ref_type
-    tuple_merge(T1 const& a1, std::tuple<T2 const&,T3 const&> const& a2)
-    {
-        return ref_type(a1,std::get<0>(a2),std::get<1>(a2));
-    }
-};
-
-//____________________________________________________________________________//
-
-template<typename T1, typename T2,typename T3>
-struct zip_traits<std::tuple<T1,T2>,T3> {
-    typedef std::tuple<T1,T2,T3> type;
-    typedef typename data::traits<type>::ref_type ref_type;
-
-    static ref_type
-    tuple_merge(std::tuple<T1 const&,T2 const&> const& a1, T3 const& a2)
-    {
-        return ref_type(std::get<0>(a1),std::get<1>(a1),a2);
-    }
-};
-
-} // namespace ds_detail
 
 // ************************************************************************** //
 // **************                       zip                    ************** //
@@ -89,25 +47,24 @@ class zip {
     typedef typename dataset1_decay::iterator       dataset1_iter;
     typedef typename dataset2_decay::iterator       dataset2_iter;
 
-    typedef typename dataset1_decay::sample         sample1;
-    typedef typename dataset2_decay::sample         sample2;
-
 public:
-    typedef typename ds_detail::zip_traits<sample1,sample2>::type sample;
-
     enum { arity = dataset1_decay::arity + dataset2_decay::arity };
 
     struct iterator {
-        typedef typename data::traits<sample>::ref_type ref_type;
-
         // Constructor
         explicit    iterator( dataset1_iter iter1, dataset2_iter iter2 )
         : m_iter1( std::move( iter1 ) )
         , m_iter2( std::move( iter2 ) )
         {}
 
+        using iterator_sample = decltype(
+            sample_merge( *std::declval<dataset1_iter>(),
+                          *std::declval<dataset2_iter>()) );
+
         // forward iterator interface
-        ref_type        operator*() const   { return ds_detail::zip_traits<sample1,sample2>::tuple_merge( *m_iter1, *m_iter2 ); }
+        auto            operator*() const -> iterator_sample {
+            return sample_merge( *m_iter1, *m_iter2 );
+        }
         void            operator++()        { ++m_iter1; ++m_iter2; }
 
     private:
@@ -119,28 +76,47 @@ public:
     //! Constructor
     //!
     //! The datasets are moved and not copied.
-    zip( DataSet1&& ds1, DataSet2&& ds2, data::size_t size )
+    zip( DataSet1&& ds1, DataSet2&& ds2/*, data::size_t size*/ )
     : m_ds1( std::forward<DataSet1>( ds1 ) )
     , m_ds2( std::forward<DataSet2>( ds2 ) )
-    , m_size( size )
+    //, m_size( size )
     {}
 
     //! Move constructor
     zip( zip&& j )
     : m_ds1( std::forward<DataSet1>( j.m_ds1 ) )
     , m_ds2( std::forward<DataSet2>( j.m_ds2 ) )
-    , m_size( j.m_size )
+    //, m_size( j.m_size )
     {}
 
     // dataset interface
-    data::size_t    size() const    { return m_size; }
+    data::size_t    size() const    { return zip_size(); }
     iterator        begin() const   { return iterator( m_ds1.begin(), m_ds2.begin() ); }
 
 private:
     // Data members
     DataSet1        m_ds1;
     DataSet2        m_ds2;
-    data::size_t    m_size;
+    //data::size_t    m_size;
+  
+  
+    //! Handles the sise of the resulting zipped dataset.
+    data::size_t zip_size() const
+    {
+        data::size_t ds1_size = m_ds1.size();
+        data::size_t ds2_size = m_ds2.size();
+
+        if( ds1_size == ds2_size )
+            return ds1_size;
+
+        if( ds1_size == 1 || ds1_size.is_inf() )
+            return ds2_size;
+
+        if( ds2_size == 1  || ds2_size.is_inf() )
+            return ds1_size;
+
+        BOOST_TEST_DS_ERROR( "Can't zip datasets of different sizes" );
+    }
 };
 
 //____________________________________________________________________________//
@@ -148,32 +124,6 @@ private:
 //! Zipped datasets results in a dataset.
 template<typename DataSet1, typename DataSet2>
 struct is_dataset<zip<DataSet1,DataSet2>> : mpl::true_ {};
-
-//____________________________________________________________________________//
-
-namespace ds_detail {
-
-//! Handles the sise of the resulting zipped dataset.
-template<typename DataSet1, typename DataSet2>
-inline data::size_t
-zip_size( DataSet1&& ds1, DataSet2&& ds2 )
-{
-    data::size_t ds1_size = ds1.size();
-    data::size_t ds2_size = ds2.size();
-
-    if( ds1_size == ds2_size )
-        return ds1_size;
-
-    if( ds1_size == 1 || ds1_size.is_inf() )
-        return ds2_size;
-
-    if( ds2_size == 1  || ds2_size.is_inf() )
-        return ds1_size;
-
-    BOOST_TEST_DS_ERROR( "Can't zip datasets of different sizes" );
-}
-
-} // namespace ds_detail
 
 //____________________________________________________________________________//
 
@@ -197,8 +147,8 @@ inline typename boost::lazy_enable_if_c<is_dataset<DataSet1>::value && is_datase
 operator^( DataSet1&& ds1, DataSet2&& ds2 )
 {
     return zip<DataSet1,DataSet2>( std::forward<DataSet1>( ds1 ),
-                                   std::forward<DataSet2>( ds2 ),
-                                   ds_detail::zip_size( ds1, ds2 ) );
+                                   std::forward<DataSet2>( ds2 )/*,
+                                   ds_detail::zip_size( ds1, ds2 )*/ );
 }
 
 //____________________________________________________________________________//
