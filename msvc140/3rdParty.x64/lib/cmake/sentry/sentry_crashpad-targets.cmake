@@ -16,7 +16,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_targetsDefined)
 set(_targetsNotDefined)
 set(_expectedTargets)
-foreach(_expectedTarget sentry::sentry)
+foreach(_expectedTarget sentry_crashpad::handler)
   list(APPEND _expectedTargets ${_expectedTarget})
   if(NOT TARGET ${_expectedTarget})
     list(APPEND _targetsNotDefined ${_expectedTarget})
@@ -50,21 +50,12 @@ if(_IMPORT_PREFIX STREQUAL "/")
   set(_IMPORT_PREFIX "")
 endif()
 
-# Create imported target sentry::sentry
-add_library(sentry::sentry SHARED IMPORTED)
-
-set_target_properties(sentry::sentry PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
-  INTERFACE_LINK_LIBRARIES "\$<\$<OR:\$<PLATFORM_ID:Linux>,\$<PLATFORM_ID:Android>>:-Wl,--build-id=sha1>"
-)
-
-if(CMAKE_VERSION VERSION_LESS 2.8.12)
-  message(FATAL_ERROR "This file relies on consumers using CMake 2.8.12 or greater.")
-endif()
+# Create imported target sentry_crashpad::handler
+add_executable(sentry_crashpad::handler IMPORTED)
 
 # Load information for each installed configuration.
 get_filename_component(_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
-file(GLOB CONFIG_FILES "${_DIR}/sentry-targets-*.cmake")
+file(GLOB CONFIG_FILES "${_DIR}/sentry_crashpad-targets-*.cmake")
 foreach(f ${CONFIG_FILES})
   include(${f})
 endforeach()
