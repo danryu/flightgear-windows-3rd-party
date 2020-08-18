@@ -55,7 +55,7 @@ add_library(sentry::sentry SHARED IMPORTED)
 
 set_target_properties(sentry::sentry PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
-  INTERFACE_LINK_LIBRARIES "\$<\$<OR:\$<PLATFORM_ID:Linux>,\$<PLATFORM_ID:Android>>:-Wl,--build-id=sha1>"
+  INTERFACE_LINK_LIBRARIES "\$<\$<OR:\$<PLATFORM_ID:Linux>,\$<PLATFORM_ID:Android>>:-Wl,-E,--build-id=sha1>"
 )
 
 if(CMAKE_VERSION VERSION_LESS 2.8.12)
