@@ -16,7 +16,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_targetsDefined)
 set(_targetsNotDefined)
 set(_expectedTargets)
-foreach(_expectedTarget sentry_crashpad::handler)
+foreach(_expectedTarget sentry_crashpad::crashpad_handler)
   list(APPEND _expectedTargets ${_expectedTarget})
   if(NOT TARGET ${_expectedTarget})
     list(APPEND _targetsNotDefined ${_expectedTarget})
@@ -50,8 +50,8 @@ if(_IMPORT_PREFIX STREQUAL "/")
   set(_IMPORT_PREFIX "")
 endif()
 
-# Create imported target sentry_crashpad::handler
-add_executable(sentry_crashpad::handler IMPORTED)
+# Create imported target sentry_crashpad::crashpad_handler
+add_executable(sentry_crashpad::crashpad_handler IMPORTED)
 
 # Load information for each installed configuration.
 get_filename_component(_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
