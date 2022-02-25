@@ -33,12 +33,14 @@ cmake --build . --config RelWithDebInfo --target INSTALL
 cd %ROOT_DIR%
 
 xcopy /S /Y %ROOT_DIR%\install_64\openal\include\* %THIRDPARTY_DIR%\3rdParty.x64\include\
+xcopy /S /Y %ROOT_DIR%\install_64\openal\lib\cmake\* %THIRDPARTY_DIR%\3rdParty.x64\lib\cmake\
 xcopy /S /Y %ROOT_DIR%\install_64\openal\bin\OpenAL32.dll %THIRDPARTY_DIR%\3rdParty.x64\bin\
 xcopy /S /Y %ROOT_DIR%\install_64\openal\lib\OpenAL32.lib %THIRDPARTY_DIR%\3rdParty.x64\lib\
 
 xcopy /S /Y %ROOT_DIR%\install_32\openal\include\* %THIRDPARTY_DIR%\3rdParty\include\
 xcopy /S /Y %ROOT_DIR%\install_32\openal\bin\OpenAL32.dll %THIRDPARTY_DIR%\3rdParty\bin\
 xcopy /S /Y %ROOT_DIR%\install_32\openal\lib\OpenAL32.lib %THIRDPARTY_DIR%\3rdParty\lib\
+xcopy /S /Y %ROOT_DIR%\install_32\openal\lib\cmake\* %THIRDPARTY_DIR%\3rdParty\lib\cmake\
 
 SET SENTRY_ORG=flightgear
 SET SENTRY_PROJECT=flightgear
